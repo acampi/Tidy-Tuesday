@@ -37,9 +37,8 @@ big_mac <- tt$`big-mac` %>%
     
     # only countries w/ complete data
     filter(country_total == max(country_total)) %>%
-    
-    arrange(country, date)
 
+    arrange(country, date)
 ```
 
 
@@ -81,8 +80,6 @@ big_mac %>%
     expand_limits(x = 130) +
     labs(x= "Price of Big Mac in 2020 / Price of Big Mac in 2000",
          title = "Inflation multiple by country")
-    
-
 ```
 
 
@@ -98,7 +95,6 @@ big_mac %>%
     select(date, iso_a3, country, local_price, dollar_ex, usd_price, big_mac_ex, usd_raw, usd_gdp, gdp_dollar, usd_adjusted) %>%
     mutate(usd_recalculated = (big_mac_ex - dollar_ex) / dollar_ex) %>%
     filter(!is.na(gdp_dollar))
-
 ```
 
 
@@ -116,7 +112,6 @@ big_mac %>%
     labs(x = "Period ",
          y = "Currency value relative to USD",
          z = "Big Mac Index Evolution per country")
-    
 ```
 
 
@@ -138,7 +133,6 @@ big_mac %>%
     ggplot(aes(date, local_price)) +
     geom_line(aes(color = "Price (in local currency)")) +
     geom_line(aes(y = price_from_usd, color = "Price from USD"))
-
 ```
 
 The prior chart shows that, if we compare the price of the Big Mac in pesos and the value of that big mac converted to usd, the value of the peso is much lower than the usd (we would have expected it much higher than actual=.
@@ -165,7 +159,6 @@ big_mac %>%
     labs(y = "Big Mac Index relative to USD",
          x ="")
 
-
 # Analyse it from the gdp perspective
 # Scatterplot each country usd_raw vs its gpd_dollar
 
@@ -177,7 +170,6 @@ big_mac %>%
     geom_text(aes(label = country)) +
     labs(x = "GDP per capita (USD)",
          y = "Raw Big Mac Index relative to USD")
-
 ```
 
 In Indonesia, Big Macs are cheaper than expected based on the currency conversion rate. 
@@ -196,7 +188,6 @@ big_mac %>%
     geom_text_repel(aes(label = country)) + 
     labs(x = "GDP per capita (dollars)",
          y = "Adjusted Big Mac Index relative to USD")
-
 ```
 
 
@@ -255,9 +246,7 @@ big_mac %>%
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     labs(y = "GDP-Adjusted Big Max Index relative to each currency",
          x = "") 
-
 ```
-
 
 
 What Big Mac prices tend to move together with the USD?
