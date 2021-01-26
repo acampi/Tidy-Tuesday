@@ -1,0 +1,56 @@
+---
+title: "20200908_Friends scripts"
+author: "Albert Campillo"
+date: "1/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme(theme_light())
+```
+
+## 
+
+```{r load}
+tt <- tt_load("2020-09-08")
+```
+
+```{r}
+tt
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
