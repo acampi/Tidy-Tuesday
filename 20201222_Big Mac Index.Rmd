@@ -16,6 +16,7 @@ library(tidytuesdayR)
 
 library(scales)
 library(ggrepel)
+
 theme_set(theme_light())
 ```
 
@@ -42,10 +43,16 @@ big_mac <- tt$`big-mac` %>%
 ```
 
 
+usd_raw -> indicate whether a currency is undervalued or overvalued vs the usd as a result of comparing the price of the local burger at usd price (local_price / usd_price) vs the usd exchange rate (usd_price), therefore:
+
+((local_price / usd_price) - dollar_ex) / dollar_ex = undervalued (+) or overvalued(-)
+
+
 ```{r}
+# Evolution of inflation rate by country over time
+
 big_mac %>%
-    
-    # order countries by their inflation (function of local currency max /  min)
+    # sort countries by their inflation evolution over time (function of local currency last / first)
     mutate(country = fct_reorder(country, local_price, function(.) last(.) / first(.))) %>% 
     
     ggplot(aes(date, local_price, color = country)) +
@@ -59,6 +66,8 @@ big_mac %>%
 
 
 ```{r}
+# What inflation has each country experienced over the period?
+
 big_mac %>%
     group_by(country) %>%
     summarize(big_mac_inflation = last(local_price) / first(local_price)) %>%
@@ -67,20 +76,24 @@ big_mac %>%
     
     ggplot(aes(big_mac_inflation, country)) +
     geom_col() +
-    geom_text(aes(label = paste0(round(big_mac_inflation, 1), "x")), hjust = 0) +
+    geom_text(aes(label = paste0("  ", round(big_mac_inflation, 1), "x")), hjust = 0) +
     scale_x_log10(breaks = c(1,3,10,30,100)) +
     expand_limits(x = 130) +
-    labs(x= "Price of Big Mac in 2020 / Price of Big Mac in 2000")
+    labs(x= "Price of Big Mac in 2020 / Price of Big Mac in 2000",
+         title = "Inflation multiple by country")
     
 
 ```
 
 
 ```{r} 
+# check the input values of local currency overvalue and undervalue
+
 big_mac %>%
     group_by(date) %>%
-    mutate(usd_price = local_price[iso_a3== "USA"],
-           usd_gdp   = gdp_dollar[iso_a3 == "USA"]) %>%
+    mutate(usd_price = local_price[iso_a3 == "USA"],
+           usd_gdp   = gdp_dollar [iso_a3 == "USA"]) %>%
+    ungroup() %>%
     mutate(big_mac_ex = local_price / usd_price) %>%
     select(date, iso_a3, country, local_price, dollar_ex, usd_price, big_mac_ex, usd_raw, usd_gdp, gdp_dollar, usd_adjusted) %>%
     mutate(usd_recalculated = (big_mac_ex - dollar_ex) / dollar_ex) %>%
@@ -90,6 +103,8 @@ big_mac %>%
 
 
 ```{r}
+# What is the adjusted Big Mac index relative to the dollar over time?
+
 big_mac %>%
     select(date, country, local_price, dollar_ex, usd_raw, gdp_dollar, usd_adjusted) %>%
     filter(!is.na(gdp_dollar)) %>%
@@ -97,13 +112,17 @@ big_mac %>%
     ggplot(aes(date, usd_raw)) +
     geom_line() +
     expand_limits(y = 0) +
-    facet_wrap(~country, scales = "free_y")
+    facet_wrap(~country, scales = "free_y") +
+    labs(x = "Period ",
+         y = "Currency value relative to USD",
+         z = "Big Mac Index Evolution per country")
     
 ```
 
 
+
 ```{r}
-# Why Argentinian currency is undervalued? (hint: inflation)
+# Is the argentinian peso undervalued? (hint: inflation)
 
 big_mac %>%
     group_by(date) %>%
@@ -112,65 +131,63 @@ big_mac %>%
     ungroup() %>%
     filter(country == "Argentina",
            !is.na(gdp_dollar)) %>%
+    
+    # calculate what would the LC price in USD be
     mutate(price_from_usd = usd_price * dollar_ex) %>%
      
     ggplot(aes(date, local_price)) +
     geom_line(aes(color = "Price (in local currency)")) +
     geom_line(aes(y = price_from_usd, color = "Price from USD"))
 
-
-    
 ```
+
+The prior chart shows that, if we compare the price of the Big Mac in pesos and the value of that big mac converted to usd, the value of the peso is much lower than the usd (we would have expected it much higher than actual=.
+This implies there are other factors affecting the undervalued situation of the peso.
+
+Hint: (Hyper)Inflation
 
 
 ```{r}
 big_mac %>%
     select(date, country, local_price, dollar_ex, usd_raw, gdp_dollar, usd_adjusted) %>%
-    filter(!is.na(gdp_dollar)) %>%
+    filter(!is.na(gdp_dollar),
+           country != "United States") %>%
+    
+    #order countries by most undervalued currency ones to more overvalued
     mutate(country = fct_reorder(country, usd_raw)) %>%
     
     ggplot(aes(date, usd_raw)) +
     geom_line() +
     geom_hline(color = "red", lty = 2, yintercept = 0) +
-    expand_limits(y = 0) +
-    facet_wrap(~country) + 
+    expand_limits(y= 0 ) +
+    facet_wrap(~country) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(y = "Big Max Index relative to USD",
-         x = "")
+    labs(y = "Big Mac Index relative to USD",
+         x ="")
 
 
-big_mac %>%
-    filter(country != "United States") %>%
-    select(date, country, local_price, dollar_ex, usd_raw, gdp_dollar, usd_adjusted) %>%
-    filter(!is.na(gdp_dollar)) %>%
-    mutate(country = fct_reorder(country, usd_raw)) %>%
-    
-    ggplot(aes(date, usd_adjusted)) +
-    geom_line() +
-    geom_hline(color = "red", lty = 2, yintercept = 0) +
-    expand_limits(y = 0) +
-    facet_wrap(~country) + 
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(y = "Raw Big Max Index relative to USD",
-         x = "")
+# Analyse it from the gdp perspective
+# Scatterplot each country usd_raw vs its gpd_dollar
 
- 
 big_mac %>%
     filter(date == max(date)) %>%
     ggplot(aes(gdp_dollar, usd_raw)) +
     geom_point() +
     geom_smooth(method = "lm") + 
-    geom_text_repel(aes(label = country)) + 
-    labs(x = "GDP per capita (dollars)",
+    geom_text(aes(label = country)) +
+    labs(x = "GDP per capita (USD)",
          y = "Raw Big Mac Index relative to USD")
+
 ```
 
 In Indonesia, Big Macs are cheaper than expected based on the currency conversion rate. 
-However, this is not surprising as for counties with Indonesia´s GDP per capita it's roughly par for the course. 
+However, this is not surprising as for countries with Indonesia´s GDP per capita it's roughly par for the course. 
 
-What we are really interested are rich countries with expensive Big Macs, which indicate that their currency is either undervalued or overvalued respectively.
+What we are really interested are rich countries with cheap Big Macs,or relatively poor countries with expensive Big Macs, which indicate that their currency is either undervalued or overvalued respectively.
 
 ```{r}
+# Big Mac Index in USD in 2020 accross countries 
+
 big_mac %>%
     filter(date == max(date)) %>%
     ggplot(aes(gdp_dollar, usd_adjusted)) +
@@ -184,18 +201,8 @@ big_mac %>%
 
 
 ```{r}
+# Animate previous plot
 
-big_mac %>%
-    filter(date == max(date)) %>%
-    mutate(country = fct_reorder(country, usd_adjusted)) %>%
-    
-    ggplot(aes(usd_adjusted, country)) +
-    geom_col() +
-    labs(x = "Big Mac Index (GDP adjusted)",
-         y = "")
-```  
-
-```{r}
 library(gganimate)
 
 big_mac %>%
@@ -204,23 +211,41 @@ big_mac %>%
     geom_point() +
     geom_smooth(method = "lm") + 
     geom_text_repel(aes(label = country)) + 
-    transition_time (date) + 
+    transition_time(date) + 
     labs(x = "GDP per capita (dollars)",
          y = "Adjusted Big Mac Index relative to USD", 
          title = "{ frame_time }")
+```
 
 
-``` 
+```{r}
+
+# Which countries have most undervalued currencies?
+
+big_mac %>%
+    filter(date == max(date)) %>%
+    mutate(country = fct_reorder(country, usd_adjusted)) %>%
+    
+    ggplot(aes(usd_adjusted, country)) +
+    geom_col() +
+    labs(x = "Big Mac Index (GDP adjusted)",
+         y = "",
+         title = "Rank of countries by currency value (2020)",
+         subtitle = "From most undervalued to most overvalued")
+```  
+
 
 ```{r}
 big_mac %>%
-    select(date, country, local_price, dollar_ex, usd_raw, gdp_dollar, ends_with("adjusted")) %>%
+    select(date, country, local_price, dollar_ex, usd_raw, gdp_dollar, 
+           ends_with("adjusted")) %>%
+    
     pivot_longer(ends_with("adjusted"), names_to = "base_currency", values_to = "adjusted") %>%
     
     mutate(base_currency = str_to_upper(str_remove(base_currency, "_adjusted"))) %>%
     
     filter(!is.na(gdp_dollar)) %>%
-    mutate(country = fct_reorder(country, adjusted )) %>%
+    mutate(country = fct_reorder(country, adjusted)) %>%
     
     ggplot(aes(date, adjusted, color = base_currency)) +
     geom_line() +
@@ -228,7 +253,20 @@ big_mac %>%
     expand_limits(y = 0) +
     facet_wrap(~country) + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    labs(y = "GCP-adjusted Big Max Index relative to USD",
+    labs(y = "GDP-Adjusted Big Max Index relative to each currency",
          x = "") 
 
 ```
+
+
+
+What Big Mac prices tend to move together with the USD?
+
+```{r}
+library(widyr)
+
+big_mac %>%
+    pairwise_cor(country, date, local_price, sort = TRUE) %>%
+    filter(item1 == "United States") %>%
+    View()
+``` 
