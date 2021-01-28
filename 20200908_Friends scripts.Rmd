@@ -3,6 +3,8 @@ title: "20200908_Friends scripts"
 author: "Albert Campillo"
 date: "1/27/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -22,17 +24,90 @@ tt <- tt_load("2020-09-08")
 ```
 
 ```{r}
-tt
+library(glue)
+
+friends <- tt$friends %>%
+    inner_join(tt$friends_info, by = c("season", "episode")) %>%
+    mutate(episode_title = glue("{ season }.{ episode } { title }"),
+           
+           # order by season first, then by episode
+           episode_title = fct_reorder(episode_title, season + .001 * episode))
+
+
+main_cast <- friends %>%
+    count(speaker, sort = TRUE) %>%
+    head(6)
+
 ```
 
 
+Graph ratings over time
+
 ```{r}
+
+
+episodes <- tt$friends_info %>%
+    mutate(episode_title = glue("{ season }.{ episode } { title }"),
+           episode_title = fct_reorder(episode_title, season + .001 * episode))
+    
+# Episode Popularity (million views)
+episodes %>%
+    ggplot(aes(as.integer(episode_title), us_views_millions)) +
+    geom_point(aes(color = factor(season))) +
+    geom_line() +
+    geom_text(aes(label = title), vjust = 1, hjust = 1,
+              check_overlap = TRUE, 
+              size = 2) +
+    expand_limits(y = 0) +
+    labs(x = "Episode number",
+         color = "Season")
+
+
+# Episode Ratings (IMDB)
+episodes %>%
+    ggplot(aes(as.integer(episode_title), imdb_rating)) +
+    geom_point(aes(color = factor(season))) +
+    
+    geom_line(scales = "free_y") +
+    geom_text(aes(label = title), vjust = 1, hjust = 1,
+              check_overlap = TRUE, 
+              size = 2) +
+    expand_limits(y = 0) +
+    labs(x = "Episode number", 
+         y = "IMDB rating",
+         color = "Season")
 
 ```
 
+## Predict rating based on the characters who speak?
 
 ```{r}
 
+speaker_lines_per_episode <- 
+    friends %>%
+    count(speaker, title, imdb_rating) %>%
+    complete(speaker, title, fill = list(n=0)) %>%
+    group_by(title) %>%
+    fill(imdb_rating, .direction = "downup") %>%
+    ungroup() %>%
+    
+    # weight the % of lines of a main cast (factors into account the episode length)
+    add_count(title, wt = n, name = "episode_total") %>%
+    mutate(pct = n / episode_total) 
+
+
+speaker_lines_per_episode %>%
+    semi_join(main_cast, by = "speaker") %>%
+    mutate(speaker = fct_reorder(speaker, pct)) %>%
+    ggplot(aes(pct, speaker)) +
+    geom_boxplot() +
+    scale_x_log10()
+
+# Find correlations between the weight of each main cast speaking time and the rating
+speaker_lines_per_episode %>%
+    semi_join(main_cast, by = "speaker") %>%
+    group_by(speaker) %>%
+    summarize(correlation = cor(log2(pct), imdb_rating))
 ```
 
 
